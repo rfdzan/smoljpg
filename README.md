@@ -1,5 +1,5 @@
 # smoljpg
-A multi-threaded image compression tool, powered by [turbojpeg](https://github.com/honzasp/rust-turbojpeg).
+A multi-threaded JPG compression tool, powered by [turbojpeg](https://github.com/honzasp/rust-turbojpeg).
 # Why
 DSLR Fine JPGs are quite large in size(>10MB), uploading a large number of them to social media platforms can take a lot of time.
 # How to use
