@@ -1,42 +1,87 @@
 use clap::Parser;
-use crossbeam::deque::Worker;
-use smoljpg::{single::Single, task::Tasks, threads::TaskWorker, TaskArgs};
-use std::io;
+use smoljpg::{bulk::Parallel, single::Single};
+use std::env::current_dir;
+use std::path::PathBuf;
 fn main() {
     let args = TaskArgs::parse();
-    args.verify();
+    let cur_dir = current_dir().unwrap();
     if args.is_single() {
-        if let Err(e) = single(args) {
-            eprintln!("{e}");
+        Single::builder(args.get_single())
+            .output_dir(args.get_output_dir())
+            .with_quality(args.get_quality())
+            .build()
+            .do_single()
+            .unwrap();
+    } else {
+        Parallel::builder(cur_dir.clone())
+            .output_dir(args.get_output_dir())
+            .unwrap()
+            .with_quality(args.get_quality())
+            .with_device(args.get_device())
+            .build()
+            .do_bulk()
+            .unwrap();
+    }
+}
+/// A multi-threaded JPG compression tool.
+#[derive(Parser, Debug)]
+struct TaskArgs {
+    /// Ranges from 1 (smallest file, worst quality) to 100 (biggest file, best quality).
+    #[arg(default_value_t = 95)]
+    quality: u8,
+    /// The output directory of compressed images.
+    #[arg(short, default_value_t = format!("compressed"))]
+    output_dir: String,
+    /// Single image compression.
+    #[arg(short, long, default_value_t = String::new())]
+    single: String,
+    /// The number of worker threads used.
+    #[arg(short, default_value_t = 4)]
+    device: u8,
+}
+impl TaskArgs {
+    /// Returns the quality after compression.
+    fn get_quality(&self) -> u8 {
+        self.quality
+    }
+    /// Returns number of worker threads
+    fn get_device(&self) -> u8 {
+        self.device
+    }
+    /// Check if the task given is single image.
+    fn is_single(&self) -> bool {
+        if self.single.trim().is_empty() {
+            return false;
         }
-    } else if let Err(e) = spawn_workers(args) {
-        eprintln!("{e}");
+        true
     }
-}
-fn single(args: TaskArgs) -> io::Result<()> {
-    Single::new(args).prep()?.exists().compress();
-    Ok(())
-}
-fn spawn_workers(args: TaskArgs) -> io::Result<()> {
-    let create_task = Tasks::create(&args)?;
-    let device_num = create_task.get_device();
-    let main_worker = Worker::new_fifo();
-    let mut stealers = Vec::with_capacity(usize::from(device_num));
-    for _ in 0..device_num {
-        stealers.push(main_worker.stealer());
+    /// Returns specified output dir.
+    fn get_output_dir(&self) -> PathBuf {
+        if !self.output_dir.is_empty() && self.is_single() {
+            let output_to_path = PathBuf::from(self.output_dir.as_str());
+            if !output_to_path.exists() {
+                match std::fs::create_dir(output_to_path.as_path()) {
+                    Err(e) => {
+                        eprintln!("Error creating dir: {}\n{e}", output_to_path.display());
+                        std::process::exit(1);
+                    }
+                    Ok(_) => {
+                        return output_to_path;
+                    }
+                }
+            }
+        }
+        PathBuf::from(self.output_dir.as_str())
     }
-    let handles = TaskWorker::new(
-        create_task.get_device(),
-        create_task.get_quality(),
-        create_task.get_output_dir(),
-        stealers,
-    )
-    .send_to_threads();
-    for direntry in create_task.get_main_worker() {
-        main_worker.push(direntry.ok());
+    /// Returns the single image path provided.
+    fn get_single(&self) -> PathBuf {
+        let path = match current_dir() {
+            Err(e) => {
+                eprintln!("{e}");
+                std::process::exit(1);
+            }
+            Ok(p) => p,
+        };
+        path.join(self.single.as_str())
     }
-    for handle in handles.into_iter() {
-        handle.join().unwrap();
-    }
-    Ok(())
 }
