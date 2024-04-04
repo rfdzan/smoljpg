@@ -2,6 +2,8 @@
 A multi-threaded JPG compression tool, powered by [turbojpeg](https://github.com/honzasp/rust-turbojpeg).
 # Why
 DSLR Fine JPGs are quite large in size(>10MB), uploading a large number of them to social media platforms can take a lot of time.
+# Requirements
+Apart from the [Rust toolchain](https://rustup.rs/) in order to compile the binary, see `turbojpeg`'s [requirement](https://github.com/honzasp/rust-turbojpeg?tab=readme-ov-file#requirements) section.
 # How to use
 Compile it:
 ```bash
