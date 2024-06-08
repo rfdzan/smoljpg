@@ -1,3 +1,4 @@
+# This cli tool is now a rust crate available on crates.io! Check out [jippigy](https://crates.io/crates/jippigy)
 # smoljpg
 A multi-threaded JPG compression tool, powered by [turbojpeg](https://github.com/honzasp/rust-turbojpeg).
 # Why
